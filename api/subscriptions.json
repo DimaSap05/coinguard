@@ -1,0 +1,5 @@
+[
+  {"id":"sub_1","name":"Яндекс Плюс","price":399.0,"period":"month","billingInDays":3,"categoryColor":4294951175,"categoryName":"Развлечения","description":"Семейная подписка на Музыку и Кинопоиск."},
+  {"id":"sub_2","name":"Telegram Premium","price":329.0,"period":"month","billingInDays":13,"categoryColor":4280391411,"categoryName":"Соцсети","description":"Увеличенные лимиты и кастомные эмодзи."},
+  {"id":"sub_3","name":"Фитнес-клуб «Мустанг»","price":24000.0,"period":"year","billingInDays":45,"categoryColor":4283215696,"categoryName":"Спорт","description":"Годовой абонемент с бассейном, сауной и хамамом."}
+]
