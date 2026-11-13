@@ -11,6 +11,33 @@ class SubscriptionRepository implements SubscriptionRepositoryInterface {
   List<SubscriptionModel> _subscriptions = const [];
 
   @override
+  Future<SubscriptionModel> getSubscriptionById(String id) async {
+    final response = await dio.get<Map<String, dynamic>>(
+      Endpoints.subscription(id),
+    );
+    final data = response.data?['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('API не вернул объект подписки в поле data');
+    }
+    final subscription = _parseSubscription(data);
+    if (subscription.id != id) {
+      throw const FormatException('API вернул другую подписку');
+    }
+    return subscription;
+  }
+
+  SubscriptionModel _parseSubscription(Map<String, dynamic> data) {
+    final subscription = SubscriptionModel.fromJson(data);
+    if (subscription.id.isEmpty ||
+        subscription.price < 0 ||
+        !subscription.price.isFinite ||
+        !const ['month', 'year'].contains(subscription.period)) {
+      throw const FormatException('Некорректные данные подписки');
+    }
+    return subscription;
+  }
+
+  @override
   Future<List<SubscriptionModel>> getSubscriptions() async {
     final response = await dio.get<Map<String, dynamic>>(
       Endpoints.subscriptions,
@@ -23,14 +50,7 @@ class SubscriptionRepository implements SubscriptionRepositoryInterface {
       if (item is! Map<String, dynamic>) {
         throw const FormatException('Некорректная запись подписки');
       }
-      final subscription = SubscriptionModel.fromJson(item);
-      if (subscription.id.isEmpty ||
-          subscription.price < 0 ||
-          !subscription.price.isFinite ||
-          !const ['month', 'year'].contains(subscription.period)) {
-        throw const FormatException('Некорректные данные подписки');
-      }
-      return subscription;
+      return _parseSubscription(item);
     }).toList();
     if (subscriptions.map((s) => s.id).toSet().length != subscriptions.length) {
       throw const FormatException('API вернул повторяющиеся идентификаторы');

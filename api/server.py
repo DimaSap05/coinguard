@@ -4,19 +4,28 @@ import json
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if urlparse(self.path).path != '/subscriptions':
+        path = urlparse(self.path).path
+        if path != '/subscriptions' and not path.startswith('/subscriptions/'):
             self.respond(404, {'error': 'Not found'})
             return
         records = json.loads(Path(__file__).with_name('subscriptions.json').read_text(encoding='utf-8'))
         today = datetime.now().date()
         for record in records:
             record['nextBillingDate'] = (today + timedelta(days=record.pop('billingInDays'))).isoformat()
-        self.respond(200, {'data': records})
+        if path == '/subscriptions':
+            self.respond(200, {'data': records})
+            return
+        subscription_id = unquote(path.removeprefix('/subscriptions/'))
+        subscription = next((item for item in records if item['id'] == subscription_id), None)
+        if subscription is None:
+            self.respond(404, {'error': 'Subscription not found'})
+            return
+        self.respond(200, {'data': subscription})
 
     def do_OPTIONS(self):
         self.respond(204, None)

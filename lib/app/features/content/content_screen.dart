@@ -3,6 +3,9 @@ import 'package:flutter_lab_1/app/data/data.dart';
 import 'package:flutter_lab_1/app/extensions/widget_extensions.dart';
 import 'package:flutter_lab_1/di/di.dart';
 import 'package:flutter_lab_1/app/widgets/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'bloc/content_bloc.dart';
 
 class ContentScreen extends StatefulWidget {
   final String contentId;
@@ -14,16 +17,15 @@ class ContentScreen extends StatefulWidget {
 }
 
 class _ContentScreenState extends State<ContentScreen> {
-  SubscriptionModel? _subscription;
-  bool _loading = true;
-  bool _failed = false;
+  final _content = getIt<ContentBloc>();
   bool _reminderEnabled = false;
-  int _request = 0;
+
+  void loadContent() => _content.add(ContentLoad(contentId: widget.contentId));
 
   @override
   void initState() {
     super.initState();
-    _loadSubscription();
+    loadContent();
   }
 
   @override
@@ -31,68 +33,42 @@ class _ContentScreenState extends State<ContentScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.contentId != widget.contentId) {
       _reminderEnabled = false;
-      _loadSubscription();
-    }
-  }
-
-  Future<void> _loadSubscription() async {
-    final request = ++_request;
-    final id = widget.contentId;
-    setState(() {
-      _loading = true;
-      _failed = false;
-    });
-    try {
-      final repository = getIt<SubscriptionRepositoryInterface>();
-      var subscription = repository.findById(id);
-      if (subscription == null) {
-        await repository.getSubscriptions();
-        subscription = repository.findById(id);
-      }
-      if (mounted && request == _request) {
-        setState(() {
-          _subscription = subscription;
-        });
-      }
-    } catch (error, stackTrace) {
-      talker.handle(error, stackTrace);
-      if (mounted && request == _request) {
-        setState(() {
-          _failed = true;
-        });
-      }
-    } finally {
-      if (mounted && request == _request) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      loadContent();
     }
   }
 
   @override
+  void dispose() {
+    _content.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sub = _subscription;
+    return BlocBuilder<ContentBloc, ContentState>(
+      bloc: _content,
+      builder: (context, state) => switch (state) {
+        ContentInitial() => _buildStatus(const SizedBox.shrink()),
+        ContentLoadInProgress() => _buildStatus(const AppProgressIndicator()),
+        ContentLoadSuccess() => _buildContent(state.subscription),
+        ContentLoadFailure() => _buildStatus(
+          state.notFound
+              ? const Center(child: Text('Подписка не найдена'))
+              : AppError(
+                  description: 'Не удалось загрузить подписку',
+                  onTap: loadContent,
+                ),
+        ),
+      },
+    );
+  }
 
-    if (_loading || _failed) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Подписка')),
-        body: _loading
-            ? const AppProgressIndicator()
-            : AppError(
-                description: 'Не удалось загрузить подписку',
-                onTap: _loadSubscription,
-              ),
-      );
-    }
+  Widget _buildStatus(Widget body) => Scaffold(
+    appBar: AppBar(title: const Text('Подписка')),
+    body: body,
+  );
 
-    if (sub == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Не найдено')),
-        body: const Center(child: Text('Подписка не найдена')),
-      );
-    }
-
+  Widget _buildContent(SubscriptionModel sub) {
     return Scaffold(
       appBar: AppBar(title: Text(sub.name)),
       body: SingleChildScrollView(

@@ -5,6 +5,7 @@ import 'package:flutter_lab_1/app/data/dio/set_up.dart';
 import 'package:flutter_lab_1/app/data/repositories/subscription_repository/subscription_repository.dart';
 import 'package:flutter_lab_1/app/data/repositories/subscription_repository/subscription_repository_interface.dart';
 import 'package:flutter_lab_1/app/features/home/bloc/home_bloc.dart';
+import 'package:flutter_lab_1/app/features/content/bloc/content_bloc.dart';
 
 final getIt = GetIt.instance;
 final talker = TalkerFlutter.init();
@@ -17,4 +18,7 @@ Future<void> setupLocator() async {
     SubscriptionRepository(dio: dio),
   );
   getIt.registerSingleton(HomeBloc(getIt<SubscriptionRepositoryInterface>()));
+  getIt.registerFactory(
+    () => ContentBloc(getIt<SubscriptionRepositoryInterface>()),
+  );
 }
